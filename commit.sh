@@ -17,7 +17,7 @@ function addChanges {
 			str1=`echo $i |cut -d'-' -f1`
 			str2=`echo $i |cut -d'-' -f2`
 			noOfLines=`expr $str2 - $str1 + 1`;
-			git status | grep -A20 "Untracked files:" | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | cut -d":" -f2 | head -$str2 | tail -$noOfLines | while read file
+			cat gitStatus.txt | grep -A20 "Untracked files:" | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | cut -d":" -f2 | head -$str2 | tail -$noOfLines | while read file
 			do 
 				# echo fiels $files
 				# echo "$file " >> files.txt
@@ -26,7 +26,7 @@ function addChanges {
 			done
 		elif [[ $i =~ $re ]]; 
 		then
-			files+=`git status | grep -A20 "Untracked files:"  | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | cut -d":" -f2 | head -$i | tail -1 `;
+			files+=`cat gitStatus.txt | grep -A20 "Untracked files:"  | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | cut -d":" -f2 | head -$i | tail -1 `;
 			files+=`echo " "`;
 		fi
 	done
@@ -47,12 +47,12 @@ function addChanges {
 function untracked {
 	echo "These are the untracked changes ..."
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
-	git status | grep -A20 "Untracked files:" | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | grep -n .
+	cat gitStatus.txt | grep -A20 "Untracked files:" | grep -A20 ^$ | grep -v "no changes added to commit" | grep -v ^$ | grep -n .
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
 }
 
 function add {
-	unstaged=`git status | grep -A20 'Untracked files' | grep -v -e '\.sh' -e '\.txt' -e '\.log' | grep "[\.js\.jsx]$"`
+	unstaged=`cat gitStatus.txt | grep -A20 'Untracked files' | grep -v -e '\.sh' -e '\.txt' -e '\.log' | grep "[\.js\.jsx]$"`
 	if [ ! -z "$unstaged" ];
 	then
 		untracked
@@ -69,7 +69,7 @@ function add {
 function staged {
 	echo -e "\033[01m\033[31m\n\nThese changes have been staged for commit ... \033[00m"
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-	git status | grep "modified\|new file\|deleted" | cut -d":" -f2
+	cat gitStatus.txt | grep "modified\|new file\|deleted" | cut -d":" -f2
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
 }
 
@@ -98,7 +98,7 @@ function commitAll {
 function commitSelected {
 	echo -e "\033[01m\033[31mEnter the number of each file to be committed with a space b/w them ...\033[00m"
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
-	git status | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | grep -n .
+	cat gitStatus.txt | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | grep -n .
 	echo "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++" 
 	read numbers
 	files="";
@@ -112,7 +112,7 @@ function commitSelected {
 			str1=`echo $i |cut -d'-' -f1`
 			str2=`echo $i |cut -d'-' -f2`
 			noOfLines=`expr $str2 - $str1 + 1`;
-			git status | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | head -$str2 | tail -$noOfLines | while read file
+			cat gitStatus.txt | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | head -$str2 | tail -$noOfLines | while read file
 			do 
 				# echo fiels $files
 				# echo "$file " >> files.txt
@@ -121,7 +121,7 @@ function commitSelected {
 			done
 		elif [[ $i =~ $re ]]; 
 		then
-			files+=`git status | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | head -$i | tail -1`;
+			files+=`cat gitStatus.txt | grep -i "modified\|new file\|deleted\|renamed" | cut -d":" -f2 | head -$i | tail -1`;
 			files+=`echo " "`;
 		else 
 		   commitAll
@@ -154,17 +154,22 @@ function commitSelected {
 }
 
 #BEGIN
-git status | grep "behind" | grep "can be fast-forwarded"
-if [[ $? ]]; then
+rm gitStatus.txt 2> /dev/null
+# git status 2>&1 | tee gitStatus.txt
+git status
+git status > gitStatus.txt
+pullRequired=`cat gitStatus.txt | grep "behind" | grep "can be fast-forwarded"`
+# cat gitStatus.txt
+if [ ! -z $pullRequired ]; 
+then
+	git status > gitStatus.txt
 	git pull
 fi
-
 # confirm
 rm files.txt 2> /dev/null
-git status
 add
 commit
-confirm
+confirm 
 git push
 read comment
 
